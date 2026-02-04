@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Note</title>
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/note.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar glass">
+      <div class="topbar-left">
+        <button id="btnBack" class="btn ghost" type="button">Zurück</button>
+        <div>
+          <h1 class="title" id="noteLabelTitle">Notiz</h1>
+          <p class="subtitle" id="noteMeta"></p>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button id="btnDelete" class="btn danger" type="button">Löschen</button>
+      </div>
+    </header>
+
+    <section class="content">
+      <div class="editor glass" id="editorShell">
+        <div class="editor-head">
+          <label class="field inline">
+            <span>Name</span>
+            <input id="noteTitle" class="input" />
+          </label>
+
+          <label class="field inline">
+            <span>Farbe</span>
+            <input id="noteColor" class="input" type="color" />
+          </label>
+        </div>
+
+        <textarea id="noteText" class="textarea" placeholder="Schreib los..."></textarea>
+
+        <div class="editor-foot">
+          <span class="muted" id="saveState">Bereit</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/storage.js"></script>
+  <script src="js/note.js"></script>
+</body>
+</html>

@@ -1,12 +1,88 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diashow</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Profiles</title>
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/index.css" />
 </head>
 <body>
-    <p>Webseite von Yannick Salm</p>   
+  <main class="shell">
+    <header class="topbar glass">
+      <div>
+        <h1 class="title">Profile</h1>
+        <p class="subtitle">Wähle ein Profil</p>
+      </div>
+      <div class="topbar-actions">
+        <button id="btnImportProfile" class="btn ghost" type="button">Import</button>
+        <button id="btnExportAll" class="btn ghost" type="button">Export</button>
+      </div>
+    </header>
+
+    <section class="content">
+      <div id="profileGrid" class="grid"></div>
+      <div id="emptyHint" class="empty glass hidden">
+        Noch kein Profil vorhanden. Unten rechts kannst du eins erstellen.
+      </div>
+    </section>
+
+    <button id="fabAddProfile" class="fab" type="button" aria-label="Profil erstellen">+</button>
+  </main>
+
+  <!-- PIN Modal -->
+  <dialog id="pinDialog" class="dialog glass">
+    <form method="dialog" class="dialog-body">
+      <h2 class="dialog-title">PIN</h2>
+      <p class="dialog-subtitle" id="pinForName">Profil</p>
+
+      <label class="field">
+        <span>PIN eingeben</span>
+        <input id="pinInput" inputmode="numeric" autocomplete="one-time-code" maxlength="12" class="input" type="password" />
+      </label>
+
+      <label class="check">
+        <input id="rememberPin" type="checkbox" />
+        <span>Merken auf diesem Gerät</span>
+      </label>
+
+      <menu class="dialog-actions">
+        <button id="pinCancel" class="btn ghost" value="cancel" type="button">Abbrechen</button>
+        <button id="pinOk" class="btn primary" value="ok" type="button">Weiter</button>
+      </menu>
+
+      <p id="pinError" class="error hidden">Falscher PIN.</p>
+    </form>
+  </dialog>
+
+  <!-- Create Profile Modal -->
+  <dialog id="createProfileDialog" class="dialog glass">
+    <form method="dialog" class="dialog-body">
+      <h2 class="dialog-title">Neues Profil</h2>
+
+      <label class="field">
+        <span>Profilname</span>
+        <input id="newProfileName" class="input" placeholder="z.B. demo" />
+      </label>
+
+      <label class="field">
+        <span>PIN</span>
+        <input id="newProfilePin" class="input" inputmode="numeric" maxlength="12" type="password" placeholder="kurz & simpel" />
+      </label>
+
+      <menu class="dialog-actions">
+        <button id="createCancel" class="btn ghost" value="cancel" type="button">Abbrechen</button>
+        <button id="createOk" class="btn primary" value="ok" type="button">Erstellen</button>
+      </menu>
+
+      <p class="hint">
+        Der PIN wird gehasht gespeichert (nicht im Klartext).
+      </p>
+      <p id="createError" class="error hidden"></p>
+    </form>
+  </dialog>
+
+  <script src="js/storage.js"></script>
+  <script src="js/profiles.js"></script>
 </body>
 </html>

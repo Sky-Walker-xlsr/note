@@ -1,0 +1,39 @@
+.grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.profile-card{
+  padding: 14px;
+  border-radius: 20px;
+  cursor:pointer;
+  position:relative;
+  overflow:hidden;
+}
+
+.profile-card .pname{
+  font-size: 16px;
+  margin:0;
+}
+.profile-card .pmeta{
+  margin: 8px 0 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.badge{
+  position:absolute;
+  top: 12px;
+  right: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(42,116,255,.18);
+  border: 1px solid rgba(42,116,255,.25);
+  color: rgba(232,236,255,.85);
+  font-size: 12px;
+}
+
+.profile-card:hover{
+  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+}

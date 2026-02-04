@@ -1,0 +1,15 @@
+{
+  "profile": "demo",
+  "updatedAt": "2026-02-02T00:00:00.000Z",
+  "notes": [
+    {
+      "id": "demo-note-1",
+      "label": "A",
+      "title": "Willkommen",
+      "color": "#2a74ff",
+      "content": "Das ist eine Demo-Notiz.\n\nTippe drauf und schreib weiter.\n",
+      "createdAt": "2026-02-02T00:00:00.000Z",
+      "updatedAt": "2026-02-02T00:00:00.000Z"
+    }
+  ]
+}

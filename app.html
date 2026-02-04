@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Notes</title>
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar glass">
+      <div>
+        <h1 class="title" id="profileTitle">Notizen</h1>
+        <p class="subtitle" id="profileSub">App-Screen</p>
+      </div>
+      <div class="topbar-actions">
+        <button id="btnExportNotes" class="btn ghost" type="button">Export</button>
+        <button id="btnImportNotes" class="btn ghost" type="button">Import</button>
+        <button id="btnLogout" class="btn ghost" type="button">Logout</button>
+      </div>
+    </header>
+
+    <section class="content">
+      <div id="notesGrid" class="notes-grid"></div>
+      <div id="emptyNotes" class="empty glass hidden">
+        Noch keine Notizen. Unten rechts kannst du eine erstellen.
+      </div>
+    </section>
+
+    <button id="fabAddNote" class="fab" type="button" aria-label="Notiz erstellen">+</button>
+  </main>
+
+  <!-- Create Note Modal -->
+  <dialog id="createNoteDialog" class="dialog glass">
+    <form method="dialog" class="dialog-body">
+      <h2 class="dialog-title">Neue Notiz</h2>
+
+      <label class="field">
+        <span>Name</span>
+        <input id="newNoteTitle" class="input" placeholder="z.B. Einkaufsliste" />
+      </label>
+
+      <label class="field">
+        <span>Farbe</span>
+        <input id="newNoteColor" class="input" type="color" value="#2a74ff" />
+      </label>
+
+      <menu class="dialog-actions">
+        <button id="noteCancel" class="btn ghost" value="cancel" type="button">Abbrechen</button>
+        <button id="noteOk" class="btn primary" value="ok" type="button">Erstellen</button>
+      </menu>
+
+      <p id="noteCreateError" class="error hidden"></p>
+    </form>
+  </dialog>
+
+  <input id="filePicker" type="file" accept="application/json" hidden />
+
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

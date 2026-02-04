@@ -1,0 +1,37 @@
+.editor{
+  padding: 16px;
+  border-radius: 22px;
+}
+
+.editor-head{
+  display:flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items:flex-end;
+  justify-content:space-between;
+}
+
+.textarea{
+  width:100%;
+  margin-top: 14px;
+  min-height: 62vh;
+  resize: vertical;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(10,14,28,.55);
+  color: var(--txt);
+  outline: none;
+  font: 15px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  white-space: pre-wrap;
+}
+.textarea:focus{
+  border-color: rgba(42,116,255,.55);
+  box-shadow: 0 0 0 4px rgba(42,116,255,.12);
+}
+
+.editor-foot{
+  display:flex;
+  justify-content:flex-end;
+  margin-top: 10px;
+}
