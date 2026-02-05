@@ -1,4 +1,4 @@
-/* note.js - note.html logic */
+/* note.js - note.html logic (API-backed autosave) */
 
 (function () {
   const params = new URLSearchParams(location.search);
@@ -17,57 +17,86 @@
   const editorShell = document.getElementById("editorShell");
   const saveState = document.getElementById("saveState");
 
-  if (!profileName || !noteId) return bounceApp();
-  if (!Store.isUnlocked(profileName)) return bounceApp();
+  let notesDoc = null;
+  let note = null;
 
-  let notesDoc = Store.getNotes(profileName);
-  let note = notesDoc.notes.find(n => n.id === noteId);
-  if (!note) return bounceApp();
-
-  renderNote();
-
-  btnBack.addEventListener("click", () => bounceApp());
-
-  btnDelete.addEventListener("click", () => {
-    const ok = confirm("Notiz wirklich löschen?");
-    if (!ok) return;
-
-    notesDoc = Store.getNotes(profileName);
-    notesDoc.notes = notesDoc.notes.filter(n => n.id !== noteId);
-    Store.saveNotes(profileName, notesDoc);
+  init().catch((e) => {
+    alert(String(e.message || e));
     bounceApp();
   });
 
-  let saveTimer = null;
-  const scheduleSave = () => {
-    saveState.textContent = "Speichert...";
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      notesDoc = Store.getNotes(profileName);
-      const idx = notesDoc.notes.findIndex(n => n.id === noteId);
-      if (idx === -1) return;
+  async function init() {
+    if (!profileName || !noteId) return bounceApp();
+    if (!Store.isUnlocked(profileName)) return bounceApp();
 
-      const updated = {
-        ...notesDoc.notes[idx],
-        title: titleInput.value.trim() || "Ohne Titel",
-        color: colorInput.value,
-        content: textArea.value,
-        updatedAt: Store.nowIso()
-      };
+    notesDoc = await Store.loadNotes(profileName, true);
+    note = notesDoc.notes.find(n => n.id === noteId);
+    if (!note) return bounceApp();
 
-      notesDoc.notes[idx] = updated;
-      Store.saveNotes(profileName, notesDoc);
-      note = updated;
+    renderNote();
+    bindUI();
+  }
+
+  function bindUI() {
+    btnBack.addEventListener("click", () => bounceApp());
+
+    btnDelete.addEventListener("click", async () => {
+      const ok = confirm("Notiz wirklich löschen?");
+      if (!ok) return;
+
+      notesDoc = await Store.loadNotes(profileName, true);
+      notesDoc.notes = notesDoc.notes.filter(n => n.id !== noteId);
+
+      try {
+        saveState.textContent = "Speichert...";
+        await Store.saveNotes(profileName, notesDoc);
+        bounceApp();
+      } catch (e) {
+        saveState.textContent = "Speichern fehlgeschlagen";
+        alert(String(e.message || e));
+      }
+    });
+
+    let saveTimer = null;
+    const scheduleSave = () => {
+      saveState.textContent = "Speichert...";
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => doSave().catch(() => {}), 260);
+    };
+
+    titleInput.addEventListener("input", scheduleSave);
+    colorInput.addEventListener("input", scheduleSave);
+    textArea.addEventListener("input", scheduleSave);
+  }
+
+  async function doSave() {
+    notesDoc = await Store.loadNotes(profileName, true);
+    const idx = notesDoc.notes.findIndex(n => n.id === noteId);
+    if (idx === -1) return;
+
+    const updated = {
+      ...notesDoc.notes[idx],
+      title: titleInput.value.trim() || "Ohne Titel",
+      color: colorInput.value,
+      content: textArea.value,
+      updatedAt: Store.nowIso()
+    };
+
+    notesDoc.notes[idx] = updated;
+
+    try {
+      const serverDoc = await Store.saveNotes(profileName, notesDoc);
+      notesDoc = serverDoc;
+      note = serverDoc.notes.find(n => n.id === noteId) || updated;
 
       saveState.textContent = "Gespeichert";
-      meta.textContent = "Letztes Update: " + new Date(updated.updatedAt).toLocaleString();
-      applyTint(updated.color);
-    }, 220);
-  };
-
-  titleInput.addEventListener("input", scheduleSave);
-  colorInput.addEventListener("input", scheduleSave);
-  textArea.addEventListener("input", scheduleSave);
+      meta.textContent = "Letztes Update: " + new Date(note.updatedAt || note.createdAt).toLocaleString();
+      applyTint(note.color);
+    } catch (e) {
+      saveState.textContent = "Speichern fehlgeschlagen";
+      throw e;
+    }
+  }
 
   function renderNote() {
     labelTitle.textContent = `${note.label} – ${note.title || "Notiz"}`;
@@ -78,20 +107,18 @@
     meta.textContent = "Letztes Update: " + new Date(note.updatedAt || note.createdAt).toLocaleString();
     applyTint(note.color);
 
-    // Requirement: beim Öffnen direkt in neuer leerer Zeile beginnen
-    // -> wir sorgen dafür, dass am Ende eine leere Zeile existiert und setzen den Cursor ans Ende
     ensureTrailingEmptyLine();
     setTimeout(() => {
       textArea.focus();
       const end = textArea.value.length;
       textArea.setSelectionRange(end, end);
+      saveState.textContent = "Bereit";
     }, 60);
   }
 
   function ensureTrailingEmptyLine() {
     let v = textArea.value || "";
     if (!v.endsWith("\n")) v += "\n";
-    // zweite leere Zeile, damit wirklich "neu" wirkt
     if (!v.endsWith("\n\n")) v += "\n";
     textArea.value = v;
   }
@@ -111,9 +138,9 @@
   function hexToRgba(hex, a) {
     const h = String(hex || "").replace("#", "");
     if (h.length !== 6) return `rgba(42,116,255,${a})`;
-    const r = parseInt(h.slice(0,2), 16);
-    const g = parseInt(h.slice(2,4), 16);
-    const b = parseInt(h.slice(4,6), 16);
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
     return `rgba(${r},${g},${b},${a})`;
   }
 })();

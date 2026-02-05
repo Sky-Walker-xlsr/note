@@ -1,4 +1,4 @@
-/* profiles.js - index.html logic */
+/* profiles.js - index.html logic (API-backed profiles) */
 
 (function () {
   const elGrid = document.getElementById("profileGrid");
@@ -25,117 +25,136 @@
   const btnExportAll = document.getElementById("btnExportAll");
 
   let selectedProfile = null;
+  let profilesList = [];
 
-  ensureDemoBootstrap();
-  render();
-
-  btnAdd.addEventListener("click", () => {
-    createError.classList.add("hidden");
-    newProfileName.value = "";
-    newProfilePin.value = "";
-    createDialog.showModal();
-    setTimeout(() => newProfileName.focus(), 50);
+  init().catch((e) => {
+    showEmptyHint(`Fehler: ${String(e.message || e)}`);
   });
 
-  btnCreateCancel.addEventListener("click", () => createDialog.close());
+  async function init() {
+    await ensureDemoExists();
+    await refreshProfiles();
+    bindUI();
+  }
 
-  btnCreateOk.addEventListener("click", () => {
-    const rawName = newProfileName.value;
-    const rawPin = newProfilePin.value;
+  function bindUI() {
+    btnAdd.addEventListener("click", () => {
+      createError.classList.add("hidden");
+      newProfileName.value = "";
+      newProfilePin.value = "";
+      createDialog.showModal();
+      setTimeout(() => newProfileName.focus(), 50);
+    });
 
-    const name = Store.safeName(rawName);
-    if (!name) return showCreateError("Profilname ist leer oder ungültig.");
-    if (!rawPin || rawPin.trim().length < 3) return showCreateError("PIN muss mindestens 3 Zeichen haben.");
-    if (Store.getProfile(name)) return showCreateError("Profil existiert bereits.");
+    btnCreateCancel.addEventListener("click", () => createDialog.close());
 
-    const profile = {
-      name,
-      displayName: rawName.trim(),
-      pinHash: Store.fnv1a(rawPin.trim()),
-      createdAt: Store.nowIso(),
-      updatedAt: Store.nowIso()
-    };
+    btnCreateOk.addEventListener("click", async () => {
+      const rawName = newProfileName.value;
+      const rawPin = newProfilePin.value;
 
-    Store.saveProfile(profile);
-    Store.saveNotes(name, { profile: name, updatedAt: Store.nowIso(), notes: [] });
+      const name = Store.safeName(rawName);
+      if (!name) return showCreateError("Profilname ist leer oder ungültig.");
+      if (!rawPin || rawPin.trim().length < 3) return showCreateError("PIN muss mindestens 3 Zeichen haben.");
 
-    createDialog.close();
-    render();
-  });
+      try {
+        const prof = await Store.createProfile({
+          name,
+          displayName: rawName.trim(),
+          pinHash: Store.fnv1a(rawPin.trim())
+        });
+
+        // Notes werden serverseitig initialisiert; zusätzlich einmal laden, damit Cache gefüllt ist
+        await Store.loadNotes(prof.name, false);
+
+        createDialog.close();
+        await refreshProfiles();
+      } catch (e) {
+        showCreateError(String(e.message || e));
+      }
+    });
+
+    btnPinCancel.addEventListener("click", () => pinDialog.close());
+
+    btnPinOk.addEventListener("click", async () => {
+      if (!selectedProfile) return;
+
+      const prof = await Store.getProfile(selectedProfile, true);
+      if (!prof) return;
+
+      const entered = String(pinInput.value || "").trim();
+      const hash = Store.fnv1a(entered);
+
+      if (hash !== prof.pinHash) {
+        pinError.classList.remove("hidden");
+        return;
+      }
+
+      pinError.classList.add("hidden");
+      Store.setUnlocked(selectedProfile, rememberPin.checked, 21);
+      pinDialog.close();
+      goApp(selectedProfile);
+    });
+
+    // Optional Import/Export bleibt (lokal)
+    btnImportProfile.addEventListener("click", async () => {
+      const input = makeFileInput();
+      input.click();
+      input.onchange = async () => {
+        const f = input.files?.[0];
+        if (!f) return;
+        try {
+          const obj = await Store.readFileAsJson(f);
+          if (!obj || !obj.name || !obj.pinHash) return alert("Ungültige Profil-JSON.");
+          const name = Store.safeName(obj.name);
+          await Store.createProfile({
+            name,
+            displayName: obj.displayName || obj.name,
+            pinHash: obj.pinHash
+          });
+          await refreshProfiles();
+        } catch {
+          alert("Import fehlgeschlagen.");
+        }
+      };
+    });
+
+    btnExportAll.addEventListener("click", async () => {
+      try {
+        const profiles = profilesList.slice();
+        const notesDocs = [];
+        for (const p of profiles) {
+          const doc = await Store.loadNotes(p.name, true);
+          notesDocs.push(doc);
+        }
+        const bundle = {
+          exportedAt: Store.nowIso(),
+          profiles,
+          notes: notesDocs
+        };
+        Store.downloadJson("all_profiles_and_notes.json", bundle);
+      } catch (e) {
+        alert(String(e.message || e));
+      }
+    });
+  }
 
   function showCreateError(msg) {
     createError.textContent = msg;
     createError.classList.remove("hidden");
   }
 
-  btnPinCancel.addEventListener("click", () => pinDialog.close());
+  async function refreshProfiles() {
+    elGrid.innerHTML = "";
+    profilesList = await Store.listProfiles();
 
-  btnPinOk.addEventListener("click", () => {
-    if (!selectedProfile) return;
-    const prof = Store.getProfile(selectedProfile);
-    if (!prof) return;
-
-    const entered = String(pinInput.value || "").trim();
-    const hash = Store.fnv1a(entered);
-
-    if (hash !== prof.pinHash) {
-      pinError.classList.remove("hidden");
+    if (!profilesList.length) {
+      showEmptyHint("Noch kein Profil vorhanden. Unten rechts kannst du eins erstellen.");
       return;
     }
 
-    pinError.classList.add("hidden");
-    Store.setUnlocked(selectedProfile, rememberPin.checked, 21);
-    pinDialog.close();
-    goApp(selectedProfile);
-  });
+    elEmpty.classList.add("hidden");
 
-  btnImportProfile.addEventListener("click", async () => {
-    const input = makeFileInput();
-    input.click();
-    input.onchange = async () => {
-      const f = input.files?.[0];
-      if (!f) return;
-      try {
-        const obj = await Store.readFileAsJson(f);
-        if (!obj || !obj.name || !obj.pinHash) return alert("Ungültige Profil-JSON.");
-        const name = Store.safeName(obj.name);
-        const profile = {
-          name,
-          displayName: obj.displayName || obj.name,
-          pinHash: obj.pinHash,
-          createdAt: obj.createdAt || Store.nowIso(),
-          updatedAt: Store.nowIso()
-        };
-        Store.saveProfile(profile);
-        if (!Store.getNotes(name)) {
-          Store.saveNotes(name, { profile: name, updatedAt: Store.nowIso(), notes: [] });
-        }
-        render();
-      } catch {
-        alert("Import fehlgeschlagen.");
-      }
-    };
-  });
-
-  btnExportAll.addEventListener("click", () => {
-    const idx = Store.getProfilesIndex();
-    const bundle = {
-      exportedAt: Store.nowIso(),
-      profiles: idx.map(n => Store.getProfile(n)).filter(Boolean),
-      notes: idx.map(n => Store.getNotes(n)).filter(Boolean)
-    };
-    Store.downloadJson("all_profiles_and_notes.json", bundle);
-  });
-
-  function render() {
-    elGrid.innerHTML = "";
-    const names = Store.getProfilesIndex();
-    elEmpty.classList.toggle("hidden", names.length !== 0);
-
-    names.forEach((name) => {
-      const p = Store.getProfile(name);
-      if (!p) return;
-
+    for (const p of profilesList) {
       const card = document.createElement("div");
       card.className = "profile-card glass";
 
@@ -150,19 +169,24 @@
       card.appendChild(h);
       card.appendChild(meta);
 
-      if (Store.isUnlocked(name)) {
+      if (Store.isUnlocked(p.name)) {
         const badge = document.createElement("div");
         badge.className = "badge";
         badge.textContent = "cached";
         card.appendChild(badge);
       }
 
-      card.addEventListener("click", () => onSelectProfile(name));
+      card.addEventListener("click", () => onSelectProfile(p.name));
       elGrid.appendChild(card);
-    });
+    }
   }
 
-  function onSelectProfile(name) {
+  function showEmptyHint(text) {
+    elEmpty.textContent = text;
+    elEmpty.classList.remove("hidden");
+  }
+
+  async function onSelectProfile(name) {
     selectedProfile = name;
 
     if (Store.isUnlocked(name)) {
@@ -170,7 +194,7 @@
       return;
     }
 
-    const prof = Store.getProfile(name);
+    const prof = await Store.getProfile(name, true);
     pinForName.textContent = prof?.displayName || name;
     pinInput.value = "";
     rememberPin.checked = true;
@@ -195,39 +219,37 @@
     return input;
   }
 
-  function ensureDemoBootstrap() {
-    // If empty, create a demo profile + note as starter
-    if (Store.getProfilesIndex().length > 0) return;
+  async function ensureDemoExists() {
+    // Erstellt Demo nur, wenn es serverseitig nicht existiert
+    const existing = await Store.getProfile("demo", false);
+    if (existing) return;
 
-    const demo = {
+    await Store.createProfile({
       name: "demo",
       displayName: "Demo",
-      pinHash: Store.fnv1a("1234"),
-      createdAt: Store.nowIso(),
-      updatedAt: Store.nowIso()
-    };
-    Store.saveProfile(demo);
+      pinHash: Store.fnv1a("1234")
+    });
 
-    const notesDoc = {
-      profile: "demo",
-      updatedAt: Store.nowIso(),
-      notes: [
-        {
-          id: cryptoId(),
-          label: "A",
-          title: "Willkommen",
-          color: "#2a74ff",
-          content: "Das ist eine Demo-Notiz.\n\nTippe drauf und schreib weiter.",
-          createdAt: Store.nowIso(),
-          updatedAt: Store.nowIso()
-        }
-      ]
-    };
-    Store.saveNotes("demo", notesDoc);
+    // Demo-Notiz setzen
+    const doc = await Store.loadNotes("demo", false);
+    if (doc.notes && doc.notes.length) return;
+
+    doc.notes = [
+      {
+        id: cryptoId(),
+        label: "A",
+        title: "Willkommen",
+        color: "#2a74ff",
+        content: "Das ist eine Demo-Notiz.\n\nTippe drauf und schreib weiter.\n",
+        createdAt: Store.nowIso(),
+        updatedAt: Store.nowIso()
+      }
+    ];
+
+    await Store.saveNotes("demo", doc);
   }
 
   function cryptoId() {
-    // fallback if crypto not available
     if (window.crypto?.randomUUID) return crypto.randomUUID();
     return "id_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
   }

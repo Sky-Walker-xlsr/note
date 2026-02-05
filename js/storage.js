@@ -1,15 +1,13 @@
 /* storage.js
-   - localStorage persistence
-   - JSON import/export helpers
-   - lightweight hashing for PIN
+   - localStorage cache (schnell)
+   - server persistence via Vercel API -> GitHub files
 */
 
 const Store = (() => {
   const KEYS = {
-    profilesIndex: "notesapp_profiles_index_v1", // list of profile names
-    profilePrefix: "notesapp_profile_v1_",       // + profileName
-    notesPrefix: "notesapp_notes_v1_",           // + profileName
-    unlockPrefix: "notesapp_unlock_v1_",         // + profileName
+    profilePrefix: "notesapp_profile_v2_", // + profileName
+    notesPrefix: "notesapp_notes_v2_",     // + profileName
+    unlockPrefix: "notesapp_unlock_v2_"    // + profileName
   };
 
   function nowIso() {
@@ -24,8 +22,7 @@ const Store = (() => {
       .replace(/[^a-z0-9-_]/g, "");
   }
 
-  // Not crypto-grade, but prevents plain-text storage.
-  // If you want proper crypto, you can swap to SubtleCrypto SHA-256.
+  // Simple hash for PIN gating (not crypto-grade)
   function fnv1a(str) {
     let h = 0x811c9dc5;
     for (let i = 0; i < str.length; i++) {
@@ -45,14 +42,6 @@ const Store = (() => {
     localStorage.setItem(key, JSON.stringify(value, null, 2));
   }
 
-  function getProfilesIndex() {
-    return loadJson(KEYS.profilesIndex, []);
-  }
-
-  function setProfilesIndex(list) {
-    saveJson(KEYS.profilesIndex, Array.from(new Set(list)));
-  }
-
   function getProfileKey(profileName) {
     return KEYS.profilePrefix + profileName;
   }
@@ -63,46 +52,32 @@ const Store = (() => {
     return KEYS.unlockPrefix + profileName;
   }
 
-  function getProfile(profileName) {
+  // -------- local cache helpers --------
+
+  function cacheGetProfile(profileName) {
     return loadJson(getProfileKey(profileName), null);
   }
-
-  function saveProfile(profile) {
+  function cacheSetProfile(profile) {
     saveJson(getProfileKey(profile.name), profile);
-    const idx = getProfilesIndex();
-    if (!idx.includes(profile.name)) {
-      idx.push(profile.name);
-      setProfilesIndex(idx);
-    }
   }
 
-  function deleteProfile(profileName) {
-    localStorage.removeItem(getProfileKey(profileName));
-    localStorage.removeItem(getNotesKey(profileName));
-    localStorage.removeItem(getUnlockKey(profileName));
-    setProfilesIndex(getProfilesIndex().filter(n => n !== profileName));
+  function cacheGetNotes(profileName) {
+    return loadJson(getNotesKey(profileName), null);
   }
-
-  function getNotes(profileName) {
-    return loadJson(getNotesKey(profileName), {
-      profile: profileName,
-      updatedAt: nowIso(),
-      notes: []
-    });
-  }
-
-  function saveNotes(profileName, notesDoc) {
-    notesDoc.updatedAt = nowIso();
+  function cacheSetNotes(profileName, notesDoc) {
     saveJson(getNotesKey(profileName), notesDoc);
   }
 
-  // unlock cache
+  // -------- unlock cache --------
+
   function setUnlocked(profileName, remember, days = 14) {
     const payload = {
       unlocked: true,
       remember: !!remember,
       ts: Date.now(),
-      exp: remember ? (Date.now() + days * 24 * 60 * 60 * 1000) : (Date.now() + 2 * 60 * 60 * 1000)
+      exp: remember
+        ? (Date.now() + days * 24 * 60 * 60 * 1000)
+        : (Date.now() + 2 * 60 * 60 * 1000)
     };
     saveJson(getUnlockKey(profileName), payload);
   }
@@ -119,7 +94,118 @@ const Store = (() => {
     localStorage.removeItem(getUnlockKey(profileName));
   }
 
-  // Download JSON
+  // -------- API helpers --------
+
+  async function apiGet(path) {
+    const res = await fetch(path, { method: "GET" });
+    const text = await res.text();
+    let json = null;
+    try { json = text ? JSON.parse(text) : null; } catch { json = null; }
+
+    return { ok: res.ok, status: res.status, json, text };
+  }
+
+  async function apiSend(path, method, bodyObj) {
+    const res = await fetch(path, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bodyObj || {})
+    });
+
+    const text = await res.text();
+    let json = null;
+    try { json = text ? JSON.parse(text) : null; } catch { json = null; }
+
+    return { ok: res.ok, status: res.status, json, text };
+  }
+
+  // -------- server-backed ops --------
+
+  async function listProfiles() {
+    const r = await apiGet("/api/profiles");
+    if (!r.ok) throw new Error(r.json?.error || `Profiles load failed (${r.status})`);
+    return Array.isArray(r.json?.profiles) ? r.json.profiles : [];
+  }
+
+  async function getProfile(profileName, preferCache = true) {
+    const name = safeName(profileName);
+    if (!name) return null;
+
+    if (preferCache) {
+      const cached = cacheGetProfile(name);
+      if (cached) return cached;
+    }
+
+    const r = await apiGet(`/api/profile?name=${encodeURIComponent(name)}`);
+    if (!r.ok) return null;
+
+    if (r.json && r.json.name) cacheSetProfile(r.json);
+    return r.json;
+  }
+
+  async function createProfile({ name, displayName, pinHash }) {
+    const clean = safeName(name);
+    if (!clean) throw new Error("Ungültiger Profilname.");
+
+    const r = await apiSend("/api/profile", "POST", {
+      name: clean,
+      displayName: displayName || clean,
+      pinHash: String(pinHash || "").trim()
+    });
+
+    if (!r.ok) throw new Error(r.json?.error || `Create profile failed (${r.status})`);
+
+    const prof = r.json?.profile;
+    if (prof && prof.name) cacheSetProfile(prof);
+    return prof;
+  }
+
+  async function loadNotes(profileName, preferCache = true) {
+    const name = safeName(profileName);
+    if (!name) throw new Error("Ungültiger Profilname.");
+
+    if (preferCache) {
+      const cached = cacheGetNotes(name);
+      if (cached && Array.isArray(cached.notes)) return cached;
+    }
+
+    const r = await apiGet(`/api/notes?profile=${encodeURIComponent(name)}`);
+    if (!r.ok) throw new Error(r.json?.error || `Load notes failed (${r.status})`);
+
+    if (r.json && Array.isArray(r.json.notes)) cacheSetNotes(name, r.json);
+    return r.json;
+  }
+
+  async function saveNotes(profileName, notesDoc) {
+    const name = safeName(profileName);
+    if (!name) throw new Error("Ungültiger Profilname.");
+
+    // sofort lokal cachen (snappy UX)
+    const doc = { ...(notesDoc || {}) };
+    doc.profile = name;
+    doc.updatedAt = nowIso();
+    if (!Array.isArray(doc.notes)) doc.notes = [];
+
+    cacheSetNotes(name, doc);
+
+    // server persist
+    const r = await apiSend("/api/notes", "PUT", {
+      profile: name,
+      doc
+    });
+
+    if (!r.ok) throw new Error(r.json?.error || `Save notes failed (${r.status})`);
+
+    const serverDoc = r.json?.doc;
+    if (serverDoc && Array.isArray(serverDoc.notes)) {
+      cacheSetNotes(name, serverDoc);
+      return serverDoc;
+    }
+    return doc;
+  }
+
+  // -------- Download JSON (optional) --------
+
   function downloadJson(filename, obj) {
     const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -132,7 +218,6 @@ const Store = (() => {
     URL.revokeObjectURL(url);
   }
 
-  // Read JSON from file input
   function readFileAsJson(file) {
     return new Promise((resolve, reject) => {
       const r = new FileReader();
@@ -150,16 +235,20 @@ const Store = (() => {
     nowIso,
     safeName,
     fnv1a,
-    getProfilesIndex,
-    setProfilesIndex,
-    getProfile,
-    saveProfile,
-    deleteProfile,
-    getNotes,
-    saveNotes,
+
+    // unlock
     setUnlocked,
     isUnlocked,
     clearUnlocked,
+
+    // api-backed
+    listProfiles,
+    getProfile,
+    createProfile,
+    loadNotes,
+    saveNotes,
+
+    // optional utils
     downloadJson,
     readFileAsJson
   };

@@ -1,4 +1,4 @@
-/* app.js - app.html logic */
+/* app.js - app.html logic (API-backed notes) */
 
 (function () {
   const params = new URLSearchParams(location.search);
@@ -23,92 +23,113 @@
 
   const filePicker = document.getElementById("filePicker");
 
-  if (!profileName) return bounceHome();
-  if (!Store.isUnlocked(profileName)) return bounceHome();
+  let notesDoc = null;
 
-  const profile = Store.getProfile(profileName);
-  if (!profile) return bounceHome();
-
-  elTitle.textContent = profile.displayName || profile.name;
-  elSub.textContent = "Notizen";
-
-  render();
-
-  btnLogout.addEventListener("click", () => {
-    Store.clearUnlocked(profileName);
+  init().catch((e) => {
+    alert(String(e.message || e));
     bounceHome();
   });
 
-  btnExportNotes.addEventListener("click", () => {
-    const notesDoc = Store.getNotes(profileName);
-    Store.downloadJson(`${profileName}_notes.json`, notesDoc);
-  });
+  async function init() {
+    if (!profileName) return bounceHome();
+    if (!Store.isUnlocked(profileName)) return bounceHome();
 
-  btnImportNotes.addEventListener("click", () => {
-    filePicker.value = "";
-    filePicker.click();
-  });
+    const profile = await Store.getProfile(profileName, true);
+    if (!profile) return bounceHome();
 
-  filePicker.addEventListener("change", async () => {
-    const f = filePicker.files?.[0];
-    if (!f) return;
+    elTitle.textContent = profile.displayName || profile.name;
+    elSub.textContent = "Notizen";
 
-    try {
-      const obj = await Store.readFileAsJson(f);
-      if (!obj || !obj.profile || !Array.isArray(obj.notes)) {
-        alert("Ungültige Notes-JSON.");
-        return;
-      }
-      if (Store.safeName(obj.profile) !== profileName) {
-        alert("Diese Datei gehört nicht zu diesem Profil.");
-        return;
-      }
-      Store.saveNotes(profileName, {
-        profile: profileName,
-        updatedAt: Store.nowIso(),
-        notes: obj.notes
-      });
-      render();
-    } catch {
-      alert("Import fehlgeschlagen.");
-    }
-  });
-
-  fab.addEventListener("click", () => {
-    err.classList.add("hidden");
-    newTitle.value = "";
-    newColor.value = "#2a74ff";
-    dlg.showModal();
-    setTimeout(() => newTitle.focus(), 50);
-  });
-
-  btnCancel.addEventListener("click", () => dlg.close());
-
-  btnOk.addEventListener("click", () => {
-    const title = String(newTitle.value || "").trim();
-    if (!title) return showErr("Name fehlt.");
-
-    const color = String(newColor.value || "#2a74ff");
-    const notesDoc = Store.getNotes(profileName);
-
-    const nextLabel = computeNextLabel(notesDoc.notes.map(n => n.label));
-    const note = {
-      id: cryptoId(),
-      label: nextLabel,
-      title,
-      color,
-      content: "",
-      createdAt: Store.nowIso(),
-      updatedAt: Store.nowIso()
-    };
-
-    notesDoc.notes.push(note);
-    Store.saveNotes(profileName, notesDoc);
-
-    dlg.close();
+    notesDoc = await Store.loadNotes(profileName, true);
     render();
-    openNote(note.id);
-  });
+
+    bindUI();
+  }
+
+  function bindUI() {
+    btnLogout.addEventListener("click", () => {
+      Store.clearUnlocked(profileName);
+      bounceHome();
+    });
+
+    btnExportNotes.addEventListener("click", async () => {
+      const doc = await Store.loadNotes(profileName, true);
+      Store.downloadJson(`${profileName}_notes.json`, doc);
+    });
+
+    btnImportNotes.addEventListener("click", () => {
+      filePicker.value = "";
+      filePicker.click();
+    });
+
+    filePicker.addEventListener("change", async () => {
+      const f = filePicker.files?.[0];
+      if (!f) return;
+
+      try {
+        const obj = await Store.readFileAsJson(f);
+        if (!obj || !obj.profile || !Array.isArray(obj.notes)) {
+          alert("Ungültige Notes-JSON.");
+          return;
+        }
+        if (Store.safeName(obj.profile) !== Store.safeName(profileName)) {
+          alert("Diese Datei gehört nicht zu diesem Profil.");
+          return;
+        }
+
+        obj.profile = Store.safeName(profileName);
+        obj.updatedAt = Store.nowIso();
+
+        const saved = await Store.saveNotes(profileName, obj);
+        notesDoc = saved;
+        render();
+      } catch (e) {
+        alert(String(e.message || e));
+      }
+    });
+
+    fab.addEventListener("click", () => {
+      err.classList.add("hidden");
+      newTitle.value = "";
+      newColor.value = "#2a74ff";
+      dlg.showModal();
+      setTimeout(() => newTitle.focus(), 50);
+    });
+
+    btnCancel.addEventListener("click", () => dlg.close());
+
+    btnOk.addEventListener("click", async () => {
+      const title = String(newTitle.value || "").trim();
+      if (!title) return showErr("Name fehlt.");
+
+      const color = String(newColor.value || "#2a74ff");
+
+      notesDoc = await Store.loadNotes(profileName, true);
+      const nextLabel = computeNextLabel(notesDoc.notes.map(n => n.label));
+
+      const note = {
+        id: cryptoId(),
+        label: nextLabel,
+        title,
+        color,
+        content: "",
+        createdAt: Store.nowIso(),
+        updatedAt: Store.nowIso()
+      };
+
+      notesDoc.notes.push(note);
+
+      try {
+        const saved = await Store.saveNotes(profileName, notesDoc);
+        notesDoc = saved;
+        dlg.close();
+        render();
+        openNote(note.id);
+      } catch (e) {
+        showErr(String(e.message || e));
+      }
+    });
+  }
 
   function showErr(msg) {
     err.textContent = msg;
@@ -116,7 +137,6 @@
   }
 
   function render() {
-    const notesDoc = Store.getNotes(profileName);
     const notes = notesDoc?.notes || [];
     grid.innerHTML = "";
     empty.classList.toggle("hidden", notes.length !== 0);
@@ -130,7 +150,8 @@
   function tile(note) {
     const t = document.createElement("div");
     t.className = "note-tile";
-    t.style.background = `linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05)), radial-gradient(700px 420px at 15% 10%, ${hexToRgba(note.color, 0.45)}, transparent 60%)`;
+    t.style.background =
+      `linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05)), radial-gradient(700px 420px at 15% 10%, ${hexToRgba(note.color, 0.45)}, transparent 60%)`;
 
     const letter = document.createElement("div");
     letter.className = "note-letter";
@@ -175,8 +196,8 @@
 
   function computeNextLabel(existingLabels) {
     const set = new Set((existingLabels || []).filter(Boolean));
-    // generate A..Z, AA..AZ, BA..BZ...
     const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
     for (let len = 1; len <= 3; len++) {
       const max = Math.pow(letters.length, len);
       for (let i = 0; i < max; i++) {
@@ -199,9 +220,9 @@
   function hexToRgba(hex, a) {
     const h = String(hex || "").replace("#", "");
     if (h.length !== 6) return `rgba(42,116,255,${a})`;
-    const r = parseInt(h.slice(0,2), 16);
-    const g = parseInt(h.slice(2,4), 16);
-    const b = parseInt(h.slice(4,6), 16);
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
     return `rgba(${r},${g},${b},${a})`;
   }
 })();
