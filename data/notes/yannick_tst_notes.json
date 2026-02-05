@@ -1,6 +1,6 @@
 {
   "profile": "yannick_tst",
-  "updatedAt": "2026-02-05T12:37:49.651Z",
+  "updatedAt": "2026-02-05T12:38:00.601Z",
   "notes": [
     {
       "id": "c6dbf702-0fff-4ece-b9e8-91a44c752146",
@@ -19,6 +19,15 @@
       "content": "\n\nsdf",
       "createdAt": "2026-02-05T12:37:45.716Z",
       "updatedAt": "2026-02-05T12:37:49.400Z"
+    },
+    {
+      "id": "a097cddf-a963-4a07-9dc4-1571af348240",
+      "label": "C",
+      "title": "tst_3",
+      "color": "#7300ff",
+      "content": "",
+      "createdAt": "2026-02-05T12:38:00.331Z",
+      "updatedAt": "2026-02-05T12:38:00.331Z"
     }
   ]
 }
