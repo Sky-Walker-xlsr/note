@@ -1,5 +1,15 @@
 {
   "profile": "yannick_tst",
-  "updatedAt": "2026-02-05T07:33:15.069Z",
-  "notes": []
+  "updatedAt": "2026-02-05T07:38:30.042Z",
+  "notes": [
+    {
+      "id": "c6dbf702-0fff-4ece-b9e8-91a44c752146",
+      "label": "A",
+      "title": "tst",
+      "color": "#b3400f",
+      "content": "",
+      "createdAt": "2026-02-05T07:38:29.661Z",
+      "updatedAt": "2026-02-05T07:38:29.661Z"
+    }
+  ]
 }
