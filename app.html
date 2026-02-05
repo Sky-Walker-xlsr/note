@@ -1,12 +1,15 @@
 <!doctype html>
 <html lang="de">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Notes</title>
   <link rel="stylesheet" href="css/base.css" />
   <link rel="stylesheet" href="css/app.css" />
+  <link rel="icon" type="image/png" href="data/assets/icon.png">
 </head>
+
 <body>
   <main class="shell">
     <header class="topbar glass">
@@ -20,6 +23,21 @@
         <button id="btnLogout" class="btn ghost" type="button">Logout</button>
       </div>
     </header>
+
+    <div class="search-wrap">
+      <input id="searchInput" class="input" placeholder="Volltextsuche..." autocomplete="off" />
+
+      <div id="searchBar" class="search-bar hidden">
+        <div class="search-meta">
+          <button id="btnPrevHit" class="icon-btn" type="button">Prev</button>
+          <button id="btnNextHit" class="icon-btn" type="button">Next</button>
+          <span id="searchCount" class="count"></span>
+          <button id="btnPrevNote" class="icon-btn" type="button">Note Prev</button>
+          <button id="btnNextNote" class="icon-btn" type="button">Note Next</button>
+          <button id="btnClearSearch" class="icon-btn" type="button">Clear</button>
+        </div>
+      </div>
+    </div>
 
     <section class="content">
       <div id="notesGrid" class="notes-grid"></div>
@@ -60,4 +78,5 @@
   <script src="js/storage.js"></script>
   <script src="js/app.js"></script>
 </body>
+
 </html>

@@ -1,37 +1,98 @@
-.editor{
-  padding: 16px;
-  border-radius: 22px;
+/* note.css */
+
+.success-flash {
+  animation: saveFlash 0.6s ease;
 }
 
-.editor-head{
-  display:flex;
-  gap: 14px;
-  flex-wrap: wrap;
-  align-items:flex-end;
-  justify-content:space-between;
+@keyframes saveFlash {
+  0% { box-shadow: 0 0 0 rgba(0,0,0,0); }
+  50% { box-shadow: 0 0 0 4px rgba(0, 200, 180, .35); }
+  100% { box-shadow: 0 0 0 rgba(0,0,0,0); }
 }
 
-.textarea{
-  width:100%;
-  margin-top: 14px;
-  min-height: 62vh;
-  resize: vertical;
-  padding: 14px;
-  border-radius: 18px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(10,14,28,.55);
-  color: var(--txt);
-  outline: none;
-  font: 15px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  white-space: pre-wrap;
-}
-.textarea:focus{
-  border-color: rgba(42,116,255,.55);
-  box-shadow: 0 0 0 4px rgba(42,116,255,.12);
+.shake {
+  animation: shake 0.38s ease;
 }
 
-.editor-foot{
-  display:flex;
-  justify-content:flex-end;
+@keyframes shake {
+  0% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+
+.note-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.note-edit-cluster {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.note-label-input {
+  width: 64px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.edit-hint {
+  opacity: 0.7;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.icon-btn {
+  border: 0;
+  background: rgba(255,255,255,0.06);
+  color: inherit;
+  padding: 10px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: rgba(255,255,255,0.10);
+}
+
+.save-state.ok {
+  opacity: .9;
+}
+
+.save-state.bad {
+  opacity: .95;
+}
+
+.search-nav {
   margin-top: 10px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.search-nav .group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.search-nav .count {
+  opacity: .9;
+  min-width: 64px;
+  text-align: center;
 }

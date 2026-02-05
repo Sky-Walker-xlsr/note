@@ -37,3 +37,13 @@
 .profile-card:hover{
   background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
 }
+
+.pin-glow-bad {
+  animation: pinGlow 0.6s ease;
+}
+
+@keyframes pinGlow {
+  0% { box-shadow: 0 0 0 rgba(255,60,60,0); }
+  50% { box-shadow: 0 0 0 4px rgba(255,60,60,.45); }
+  100% { box-shadow: 0 0 0 rgba(255,60,60,0); }
+}

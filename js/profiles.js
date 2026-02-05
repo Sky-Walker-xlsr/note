@@ -63,7 +63,6 @@
           pinHash: Store.fnv1a(rawPin.trim())
         });
 
-        // Notes werden serverseitig initialisiert; zusätzlich einmal laden, damit Cache gefüllt ist
         await Store.loadNotes(prof.name, false);
 
         createDialog.close();
@@ -74,6 +73,14 @@
     });
 
     btnPinCancel.addEventListener("click", () => pinDialog.close());
+
+    // WICHTIG: dein Enter-Fix bleibt exakt drin
+    pinInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        btnPinOk.click();
+      }
+    });
 
     btnPinOk.addEventListener("click", async () => {
       if (!selectedProfile) return;
@@ -86,6 +93,12 @@
 
       if (hash !== prof.pinHash) {
         pinError.classList.remove("hidden");
+
+        // rotes Aufglühen
+        pinInput.classList.remove("pin-glow-bad");
+        void pinInput.offsetWidth; // reflow zum Neustarten der Animation
+        pinInput.classList.add("pin-glow-bad");
+
         return;
       }
 
@@ -95,7 +108,6 @@
       goApp(selectedProfile);
     });
 
-    // Optional Import/Export bleibt (lokal)
     btnImportProfile.addEventListener("click", async () => {
       const input = makeFileInput();
       input.click();
@@ -220,7 +232,6 @@
   }
 
   async function ensureDemoExists() {
-    // Erstellt Demo nur, wenn es serverseitig nicht existiert
     const existing = await Store.getProfile("demo", false);
     if (existing) return;
 
@@ -230,7 +241,6 @@
       pinHash: Store.fnv1a("1234")
     });
 
-    // Demo-Notiz setzen
     const doc = await Store.loadNotes("demo", false);
     if (doc.notes && doc.notes.length) return;
 

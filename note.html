@@ -6,7 +6,9 @@
   <title>Note</title>
   <link rel="stylesheet" href="css/base.css" />
   <link rel="stylesheet" href="css/note.css" />
+  <link rel="icon" type="image/png" href="data/assets/icon.png">
 </head>
+
 <body>
   <main class="shell">
     <header class="topbar glass">
@@ -26,22 +28,37 @@
     <section class="content">
       <div class="editor glass" id="editorShell">
         <div class="editor-head">
-          <label class="field inline">
-            <span>Name</span>
-            <input id="noteTitle" class="input" />
-          </label>
+          <div class="note-top-row">
+            <div class="note-edit-cluster">
+              <input id="labelInput" class="input note-label-input" maxlength="3" />
+              <button id="editBtn" class="icon-btn" type="button" title="Bearbeiten">✎</button>
+            </div>
 
-          <label class="field inline">
-            <span>Farbe</span>
-            <input id="noteColor" class="input" type="color" />
-          </label>
+            <span class="muted" id="saveState">Bereit</span>
+          </div>
+
+          <div id="editHint" class="edit-hint hidden">
+            Edit-Modus aktiv: Label, Titel und Farbe anpassbar.
+          </div>
+
+          <!-- Suche-Navigation (nur sichtbar bei ?q=... ) -->
+          <div id="searchNav" class="search-nav hidden">
+            <div class="group">
+              <button id="btnPrevMatch" class="icon-btn" type="button">Prev</button>
+              <button id="btnNextMatch" class="icon-btn" type="button">Next</button>
+              <span id="searchNavText" class="count">0/0</span>
+            </div>
+
+            <div class="group">
+              <button id="btnPrevNote" class="icon-btn" type="button">Note Prev</button>
+              <button id="btnNextNote" class="icon-btn" type="button">Note Next</button>
+            </div>
+          </div>
         </div>
 
         <textarea id="noteText" class="textarea" placeholder="Schreib los..."></textarea>
 
-        <div class="editor-foot">
-          <span class="muted" id="saveState">Bereit</span>
-        </div>
+        <div class="editor-foot"></div>
       </div>
     </section>
   </main>
