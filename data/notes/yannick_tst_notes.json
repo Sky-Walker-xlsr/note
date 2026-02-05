@@ -1,6 +1,6 @@
 {
   "profile": "yannick_tst",
-  "updatedAt": "2026-02-05T12:37:46.373Z",
+  "updatedAt": "2026-02-05T12:37:49.651Z",
   "notes": [
     {
       "id": "c6dbf702-0fff-4ece-b9e8-91a44c752146",
@@ -16,9 +16,9 @@
       "label": "B",
       "title": "tst_2",
       "color": "#ff0000",
-      "content": "",
+      "content": "\n\nsdf",
       "createdAt": "2026-02-05T12:37:45.716Z",
-      "updatedAt": "2026-02-05T12:37:45.716Z"
+      "updatedAt": "2026-02-05T12:37:49.400Z"
     }
   ]
 }
