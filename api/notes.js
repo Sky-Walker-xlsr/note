@@ -4,74 +4,91 @@ const { json, readBody, safeName, nowIso } = require("./_lib/utils");
 module.exports = async function handler(req, res) {
   try {
     if (req.method === "GET") {
-      const name = safeName(req.query?.name);
-      if (!name) return json(res, 400, { error: "Fehlender Profilname." });
+      const profile = safeName(req.query?.profile);
+      if (!profile) return json(res, 400, { error: "Fehlender Profilname." });
 
-      const filePath = `data/profiles/${name}.json`;
-      const c = await getContent(filePath);
-      if (!c.exists) return json(res, 404, { error: "Profil nicht gefunden." });
+      const notesPath = `data/notes/${profile}_notes.json`;
+      const c = await getContent(notesPath);
+
+      if (!c.exists) {
+        const doc = { profile, updatedAt: nowIso(), notes: [] };
+        await putContent(
+          notesPath,
+          JSON.stringify(doc, null, 2),
+          `Init notes for ${profile}`
+        );
+        return json(res, 200, doc);
+      }
 
       let data = {};
-      try { data = JSON.parse(c.content); } catch { data = {}; }
+      try { data = JSON.parse(c.content); } catch { data = { profile, updatedAt: nowIso(), notes: [] }; }
+
+      if (!data || typeof data !== "object") data = { profile, updatedAt: nowIso(), notes: [] };
+      if (!Array.isArray(data.notes)) data.notes = [];
+      data.profile = profile;
+
       return json(res, 200, data);
     }
 
-    if (req.method === "POST") {
+    if (req.method === "PUT") {
       const body = await readBody(req);
 
-      const name = safeName(body?.name);
-      const displayName = String(body?.displayName || body?.name || "").trim();
-      const pinHash = String(body?.pinHash || "").trim();
+      const profile = safeName(body?.profile || body?.doc?.profile);
+      const docIn = body?.doc;
 
-      if (!name) return json(res, 400, { error: "Ungültiger Profilname." });
-      if (!displayName) return json(res, 400, { error: "DisplayName fehlt." });
-      if (!pinHash) return json(res, 400, { error: "pinHash fehlt." });
+      if (!profile) return json(res, 400, { error: "Fehlender Profilname." });
+      if (!docIn || typeof docIn !== "object") return json(res, 400, { error: "Ungültige Payload." });
 
-      const profilePath = `data/profiles/${name}.json`;
-      const notesPath = `data/notes/${name}_notes.json`;
+      const notesPath = `data/notes/${profile}_notes.json`;
 
-      // Existenz prüfen
-      const existing = await getContent(profilePath);
+      const existing = await getContent(notesPath);
+      let serverDoc = { profile, updatedAt: nowIso(), notes: [] };
+      let sha = undefined;
+
       if (existing.exists) {
-        return json(res, 409, { error: "Profil existiert bereits." });
+        sha = existing.sha;
+        try { serverDoc = JSON.parse(existing.content); } catch { /* ignore */ }
       }
 
-      const profileDoc = {
-        name,
-        displayName,
-        pinHash,
-        createdAt: nowIso(),
-        updatedAt: nowIso()
+      if (!Array.isArray(serverDoc.notes)) serverDoc.notes = [];
+      serverDoc.profile = profile;
+
+      const inNotes = Array.isArray(docIn.notes) ? docIn.notes : [];
+      const map = new Map();
+
+      for (const n of serverDoc.notes) {
+        if (n && n.id) map.set(n.id, n);
+      }
+      for (const n of inNotes) {
+        if (!n || !n.id) continue;
+        const prev = map.get(n.id);
+        if (!prev) {
+          map.set(n.id, n);
+        } else {
+          const prevU = prev.updatedAt || "";
+          const nextU = n.updatedAt || "";
+          map.set(n.id, (nextU && nextU > prevU) ? n : prev);
+        }
+      }
+
+      const outDoc = {
+        profile,
+        updatedAt: nowIso(),
+        notes: Array.from(map.values())
       };
 
-      // Profil schreiben
       await putContent(
-        profilePath,
-        JSON.stringify(profileDoc, null, 2),
-        `Create profile ${name}`
+        notesPath,
+        JSON.stringify(outDoc, null, 2),
+        `Update notes for ${profile}`,
+        sha
       );
 
-      // Notes initialisieren (nur wenn nicht vorhanden)
-      const notesExisting = await getContent(notesPath);
-      if (!notesExisting.exists) {
-        const notesDoc = {
-          profile: name,
-          updatedAt: nowIso(),
-          notes: []
-        };
-
-        await putContent(
-          notesPath,
-          JSON.stringify(notesDoc, null, 2),
-          `Init notes for ${name}`
-        );
-      }
-
-      return json(res, 200, { ok: true, profile: profileDoc });
+      return json(res, 200, { ok: true, doc: outDoc });
     }
 
-    return json(res, 405, { error: "Nur GET/POST erlaubt." });
+    return json(res, 405, { error: "Nur GET/PUT erlaubt." });
   } catch (e) {
-    return json(res, 500, { error: "Fehler in /api/profile", details: String(e.message || e) });
+    return json(res, 500, { error: "Fehler in /api/notes", details: String(e.message || e) });
   }
 };

@@ -23,14 +23,13 @@ module.exports = async function handler(req, res) {
       const displayName = String(body?.displayName || body?.name || "").trim();
       const pinHash = String(body?.pinHash || "").trim();
 
-      if (!name) return json(res, 400, { error: "Ungültiger Profilname." });
-      if (!displayName) return json(res, 400, { error: "DisplayName fehlt." });
-      if (!pinHash) return json(res, 400, { error: "pinHash fehlt." });
+      if (!name) return json(res, 400, { error: "Fehlender Profilname." });
+      if (!displayName) return json(res, 400, { error: "Fehlender DisplayName." });
+      if (!pinHash) return json(res, 400, { error: "Fehlender pinHash." });
 
       const profilePath = `data/profiles/${name}.json`;
       const notesPath = `data/notes/${name}_notes.json`;
 
-      // Existenz prüfen
       const existing = await getContent(profilePath);
       if (existing.exists) {
         return json(res, 409, { error: "Profil existiert bereits." });
@@ -44,14 +43,12 @@ module.exports = async function handler(req, res) {
         updatedAt: nowIso()
       };
 
-      // Profil schreiben
       await putContent(
         profilePath,
         JSON.stringify(profileDoc, null, 2),
         `Create profile ${name}`
       );
 
-      // Notes initialisieren (nur wenn nicht vorhanden)
       const notesExisting = await getContent(notesPath);
       if (!notesExisting.exists) {
         const notesDoc = {
