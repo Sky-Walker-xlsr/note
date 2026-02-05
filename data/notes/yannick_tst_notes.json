@@ -1,15 +1,15 @@
 {
   "profile": "yannick_tst",
-  "updatedAt": "2026-02-05T07:38:37.365Z",
+  "updatedAt": "2026-02-05T12:35:04.881Z",
   "notes": [
     {
       "id": "c6dbf702-0fff-4ece-b9e8-91a44c752146",
       "label": "A",
       "title": "tst",
-      "color": "#b3400f",
-      "content": "\n\njgfipuasdf$\nasd\nfgdgasd\n\n\nasdg\nasdg\n\n\nasdg",
+      "color": "#0fb34e",
+      "content": "\n\njgfipuasdf$\nasd\nfgdgasd\n\n\nasdg\nasdg\n\n\nasdg\n\n",
       "createdAt": "2026-02-05T07:38:29.661Z",
-      "updatedAt": "2026-02-05T07:38:36.987Z"
+      "updatedAt": "2026-02-05T12:35:03.995Z"
     }
   ]
 }
